@@ -1,0 +1,63 @@
+{
+  "platform": "SSH",
+  "commands": [
+    {
+      "id": "ssh-connect",
+      "name": "SSH 连接",
+      "desc": "使用指定端口与用户连接远程主机",
+      "tags": ["SSH", "远程"],
+      "template": "ssh -p {{port}} {{user}}@{{host}}",
+      "params": [
+        {
+          "key": "port",
+          "label": "端口",
+          "type": "text",
+          "default": "22"
+        },
+        {
+          "key": "user",
+          "label": "用户名",
+          "type": "text",
+          "default": "root"
+        },
+        {
+          "key": "host",
+          "label": "主机",
+          "type": "text",
+          "default": "192.168.1.100",
+          "hint": "IP 或域名"
+        }
+      ],
+      "docRef": "ssh"
+    },
+    {
+      "id": "ssh-copy-id",
+      "name": "配置免密登录",
+      "desc": "把本机公钥复制到远程主机",
+      "tags": ["SSH", "免密"],
+      "template": "ssh-copy-id -p {{port}} {{user}}@{{host}}",
+      "params": [
+        {
+          "key": "port",
+          "label": "端口",
+          "type": "text",
+          "default": "22"
+        },
+        {
+          "key": "user",
+          "label": "用户名",
+          "type": "text",
+          "default": "root"
+        },
+        {
+          "key": "host",
+          "label": "主机",
+          "type": "text",
+          "default": "192.168.1.100"
+        }
+      ],
+      "docRef": "ssh"
+    }
+  ],
+  "groups": []
+}

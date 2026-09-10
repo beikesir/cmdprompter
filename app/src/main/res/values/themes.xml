@@ -1,0 +1,4 @@
+<resources>
+    <!-- 1.0 不使用 ActionBar，采用完全自绘的 Compose 顶栏 -->
+    <style name="Theme.CmdPrompter" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
