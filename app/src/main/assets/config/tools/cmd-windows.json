@@ -1,0 +1,48 @@
+{
+  "platform": "CMD",
+  "commands": [
+    {
+      "id": "cmd-ipconfig",
+      "name": "查看网络配置",
+      "desc": "显示全部网卡与 DNS 信息",
+      "tags": ["CMD", "网络"],
+      "template": "ipconfig /all",
+      "params": [],
+      "docRef": "cmd-windows"
+    },
+    {
+      "id": "cmd-ping",
+      "name": "持续 Ping",
+      "desc": "不间断测试与目标主机的连通性",
+      "tags": ["CMD", "网络"],
+      "template": "ping {{host}} -t",
+      "params": [
+        {
+          "key": "host",
+          "label": "目标主机",
+          "type": "text",
+          "default": "www.baidu.com",
+          "hint": "IP 或域名"
+        }
+      ],
+      "docRef": "cmd-windows"
+    },
+    {
+      "id": "cmd-tasklist",
+      "name": "列出进程",
+      "desc": "按关键字过滤正在运行的进程",
+      "tags": ["CMD", "进程"],
+      "template": "tasklist | findstr {{keyword}}",
+      "params": [
+        {
+          "key": "keyword",
+          "label": "关键字",
+          "type": "text",
+          "default": "node"
+        }
+      ],
+      "docRef": "cmd-windows"
+    }
+  ],
+  "groups": []
+}
