@@ -1,0 +1,98 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug / Release APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Gradle 8.9
+        run: |
+          set -e
+          curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          sudo ln -sf /opt/gradle-8.9/bin/gradle /usr/local/bin/gradle
+          gradle --version
+
+      # 仓库不携带 gradle-wrapper.jar（二进制），这里就地生成，保证 CI 可重复构建
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 8.9 --distribution-type bin
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Collect Debug APK
+        run: |
+          mkdir -p apk
+          find app/build/outputs/apk/debug -name "*.apk" -exec cp {} apk/cmdprompter-1.0-debug.apk \;
+          ls -lh apk
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmdprompter-debug-apk
+          path: apk/*.apk
+          if-no-files-found: error
+
+      # Release 包：未签名也能构建成功，这里用临时 debug 密钥签名，便于直接安装
+      - name: Build Release APK
+        continue-on-error: true
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Sign Release APK
+        continue-on-error: true
+        run: |
+          set -e
+          UNSIGNED=$(find app/build/outputs/apk/release -name "*unsigned*.apk" | head -1)
+          [ -z "$UNSIGNED" ] && UNSIGNED=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          [ -z "$UNSIGNED" ] && exit 1
+          KEYSTORE=debug.jks
+          keytool -genkeypair -v -keystore "$KEYSTORE" -keyalg RSA -keysize 2048 \
+            -validity 10000 -alias debug -storepass android -keypass android \
+            -dname "CN=CmdPrompter Debug"
+          APKSIGNER=$(find "$ANDROID_HOME" -name apksigner -type f | head -1)
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias debug \
+            --ks-pass pass:android --key-pass pass:android \
+            --out apk/cmdprompter-1.0-release.apk "$UNSIGNED"
+          ls -lh apk
+
+      - name: Upload Release APK
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmdprompter-release-apk
+          path: apk/cmdprompter-1.0-release.apk
+          if-no-files-found: warn
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --generate-notes apk/*.apk
