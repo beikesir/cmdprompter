@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -37,8 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.cmdprompter.ui.components.BottomPanel
+import com.example.cmdprompter.AppVersion
+import com.example.cmdprompter.ui.components.CommandEditDialog
 import com.example.cmdprompter.ui.components.CommandItem
-import com.example.cmdprompter.ui.components.GroupHeader
+import com.example.cmdprompter.ui.components.DocPanel
+import com.example.cmdprompter.ui.components.WorkflowEditDialog
+import com.example.cmdprompter.ui.components.GroupCard
 import com.example.cmdprompter.ui.components.PlatformHeader
 import com.example.cmdprompter.ui.components.SearchSlide
 import com.example.cmdprompter.ui.components.SettingsDialog
@@ -49,6 +52,7 @@ import com.example.cmdprompter.util.ClipboardUtil
 import com.example.cmdprompter.viewmodel.DisplayData
 import com.example.cmdprompter.viewmodel.MainUiState
 import com.example.cmdprompter.viewmodel.MainViewModel
+import com.example.cmdprompter.viewmodel.EditTarget
 import com.example.cmdprompter.viewmodel.ViewMode
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
@@ -62,10 +66,15 @@ fun MainScreen(vm: MainViewModel) {
     val scope = rememberCoroutineScope()
     val maxPanelHeight = (LocalConfiguration.current.screenHeightDp * 0.45f).dp
 
-    val pickFileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+    val pickFilesLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (!uris.isNullOrEmpty()) vm.importFromUris(uris)
+    }
+    val pickFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
-        if (uri != null) vm.importFromUri(uri)
+        if (uri != null) vm.importFromTree(uri)
     }
 
     // 提示消息
@@ -80,6 +89,72 @@ fun MainScreen(vm: MainViewModel) {
         snapshotFlow { listState.isScrollInProgress }
             .filter { it }
             .collect { vm.onListScroll() }
+    }
+
+    // 导入 / 导出通用动作（设置页与配置管理页共用）
+    val doPickFiles: () -> Unit = { runCatching { pickFilesLauncher.launch(arrayOf("*/*")) } }
+    val doPickFolder: () -> Unit = { runCatching { pickFolderLauncher.launch(null) } }
+    val doExportZip: () -> Unit = {
+        vm.exportZipWithProgress { file ->
+            if (file == null) {
+                vm.postMessage("导出失败")
+            } else {
+                runCatching {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "导出配置 ZIP"))
+                }.onFailure { vm.postMessage("导出失败：${it.message}") }
+            }
+        }
+    }
+    val doCopyJson: () -> Unit = {
+        ClipboardUtil.copy(context, vm.exportJsonText(), "cmdprompter-config")
+        vm.postMessage("已复制配置 JSON")
+    }
+    val doShareJson: () -> Unit = {
+        runCatching {
+            val file = vm.exportFile()
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "导出配置 JSON"))
+        }.onFailure { vm.postMessage("导出失败：${it.message}") }
+    }
+
+    // 配置管理页：独立页面，覆盖主界面
+    if (state.showConfigManager) {
+        ConfigManagerScreen(
+            summary = state.configSummary,
+            expandedDirs = state.expandedConfigDirs,
+            previewPath = state.previewConfigPath,
+            previewText = state.previewConfigText,
+            progress = state.progress,
+            progressLabel = state.progressLabel,
+            onToggleDir = vm::toggleConfigDir,
+            onPreviewFile = vm::previewConfigFile,
+            onPickFiles = doPickFiles,
+            onPickFolder = doPickFolder,
+            onExportZip = doExportZip,
+            onCopyJson = doCopyJson,
+            onShareJson = doShareJson,
+            onBack = vm::closeConfigManager
+        )
+        return
     }
 
     Column(
@@ -107,8 +182,8 @@ fun MainScreen(vm: MainViewModel) {
         Column(modifier = Modifier.weight(1f).background(Color.White)) {
             // 顶栏
             TopBar(
-                isRightView = state.currentView == ViewMode.RIGHT,
-                onViewChange = { right -> vm.setView(if (right) ViewMode.RIGHT else ViewMode.LEFT) },
+                currentView = state.currentView,
+                onViewChange = vm::setView,
                 onSearchClick = vm::toggleSearch,
                 onSettingsClick = vm::openSettings,
                 onLogoClick = {
@@ -143,6 +218,22 @@ fun MainScreen(vm: MainViewModel) {
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
+                    state.currentView == ViewMode.WORKFLOW -> {
+                        if (state.workflows.isEmpty()) {
+                            Text(
+                                text = "暂无工作流。\n打开任一命令组的文档，点「创建工作流」即可基于它创建。",
+                                fontSize = 12.sp,
+                                color = Color(0xFF888888),
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            WorkflowList(
+                                workflows = state.workflows,
+                                onOpen = vm::openWorkflow,
+                                onDelete = vm::deleteWorkflow
+                            )
+                        }
+                    }
                     else -> {
                         CommandList(
                             display = display,
@@ -154,6 +245,7 @@ fun MainScreen(vm: MainViewModel) {
                             onToggleGroup = vm::toggleGroup,
                             onCommandClick = vm::onCommandClick,
                             onDocClick = vm::onDocClick,
+                            onGroupDocClick = vm::onGroupDocClick,
                             onDeleteClick = vm::onDeleteRequest
                         )
                     }
@@ -162,34 +254,61 @@ fun MainScreen(vm: MainViewModel) {
         }
 
 
-        // 底部面板
-        val panelId = if (state.docMode) state.docCmdId else state.selectedCmdId
-        val panelCmd = vm.commandById(panelId)
-        if (panelCmd != null) {
-            BottomPanel(
-                cmd = panelCmd,
-                docMode = state.docMode,
-                preview = vm.previewFor(panelCmd.id),
-                paramValue = { key -> vm.paramValue(panelCmd.id, key) },
-                onParamChange = { key, value -> vm.onParamChange(panelCmd.id, key, value) },
-                onParamFocused = vm::onParamFocused,
-                onFocusNext = { vm.focusNextParam() },
-                onCopy = {
-                    val text = vm.previewFor(state.selectedCmdId)
-                    if (text.isBlank()) {
-                        vm.postMessage("没有可复制的命令")
-                    } else {
-                        ClipboardUtil.copy(context, text)
-                        vm.postMessage("已复制到剪贴板")
+        // 底部面板：文档态（命令 / 命令组）优先，其次是命令参数编辑
+        val docGroup = vm.groupById(state.docGroupId)
+        val docCmd = vm.commandById(state.docCmdId)
+        if (state.docMode && (docGroup != null || docCmd != null)) {
+            val title = (docGroup?.docTitle ?: docCmd?.docTitle).orEmpty()
+            val body = docGroup?.doc ?: docCmd?.doc.orEmpty()
+            val source = docGroup?.docSource ?: docCmd?.docSource.orEmpty()
+            val itemName = docGroup?.name ?: docCmd?.name.orEmpty()
+            DocPanel(
+                title = title,
+                body = body,
+                fullText = vm.fullTextOf(source),
+                source = source,
+                itemName = itemName,
+                onBack = {
+                    if (docCmd != null) vm.onCommandClick(docCmd.id) else vm.onListScroll()
+                },
+                onEdit = {
+                    // 就地修改：命令 → EditTarget.Command；命令组 → EditTarget.Group
+                    when {
+                        docCmd != null -> vm.openEditor(EditTarget.Command(docCmd.id))
+                        docGroup != null -> vm.openEditor(EditTarget.Group(docGroup.id))
                     }
                 },
-                onExecute = vm::onExecute,
-                onMore = { vm.postMessage("更多功能将在后续版本开放") },
-                onBackToEdit = { vm.onCommandClick(panelCmd.id) },
-                focusRequestId = state.focusRequestId,
-                focusIndex = state.focusIndex,
+                onCreateWorkflow = if (docGroup != null) {
+                    { vm.createWorkflowFromGroup(docGroup.id) }
+                } else null,
                 modifier = Modifier.heightIn(max = maxPanelHeight)
             )
+        } else {
+            val panelCmd = vm.commandById(state.selectedCmdId)
+            if (panelCmd != null) {
+                BottomPanel(
+                    cmd = panelCmd,
+                    preview = vm.previewFor(panelCmd.id),
+                    paramValue = { key -> vm.paramValue(panelCmd.id, key) },
+                    onParamChange = { key, value -> vm.onParamChange(panelCmd.id, key, value) },
+                    onParamFocused = vm::onParamFocused,
+                    onFocusNext = { vm.focusNextParam() },
+                    onCopy = {
+                        val text = vm.previewFor(state.selectedCmdId)
+                        if (text.isBlank()) {
+                            vm.postMessage("没有可复制的命令")
+                        } else {
+                            ClipboardUtil.copy(context, text)
+                            vm.postMessage("已复制到剪贴板")
+                        }
+                    },
+                    onExecute = vm::onExecute,
+                    onMore = { vm.postMessage("更多功能将在后续版本开放") },
+                    focusRequestId = state.focusRequestId,
+                    focusIndex = state.focusIndex,
+                    modifier = Modifier.heightIn(max = maxPanelHeight)
+                )
+            }
         }
     }
 
@@ -214,42 +333,61 @@ fun MainScreen(vm: MainViewModel) {
         )
     }
 
-    // 设置弹窗
+    // 设置弹窗（仅保留手动新增 / 编辑）
     if (state.showSettings) {
         SettingsDialog(
-            exportText = state.exportText,
-            importText = state.settingsText,
-            onImportTextChange = vm::onSettingsTextChange,
-            onImportText = { vm.importFromText(state.settingsText) },
-            onPickFile = { runCatching { pickFileLauncher.launch("*/*") } },
-            onShare = {
-                runCatching {
-                    val file = vm.exportFile()
-                    val uri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file
-                    )
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/json"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "导出配置"))
-                }.onFailure {
-                    vm.postMessage("导出失败：${it.message}")
-                }
+            commands = state.commands,
+            groups = state.groups,
+            progress = state.progress,
+            progressLabel = state.progressLabel,
+            onNewCommand = { vm.openEditor(EditTarget.NewCommand) },
+            onNewGroup = { vm.openEditor(EditTarget.NewGroup) },
+            onEditCommand = { vm.openEditor(EditTarget.Command(it)) },
+            onEditGroup = { vm.openEditor(EditTarget.Group(it)) },
+            onDeleteItem = { vm.deleteCustom(it) },
+            configFileCount = state.configSummary.fileCount,
+            onOpenConfigManager = {
+                vm.closeSettings()
+                vm.openConfigManager()
             },
-            onCopyExport = {
-                ClipboardUtil.copy(context, state.exportText, "cmdprompter-config")
-                vm.postMessage("已复制配置 JSON")
-            },
-            onReset = vm::resetBuiltIn,
+            version = AppVersion.NAME,
             onDismiss = vm::closeSettings
         )
     }
-}
 
+    // 工作流编辑弹窗
+    val editingWf = state.editingWorkflow
+    if (editingWf != null) {
+        WorkflowEditDialog(
+            workflow = editingWf,
+            allCommands = state.commands,
+            onChange = vm::updateEditingWorkflow,
+            onAddCommand = vm::addWorkflowStep,
+            onAddBlank = vm::addBlankWorkflowStep,
+            onRemoveStep = vm::removeWorkflowStep,
+            onMoveStep = { stepId, up -> vm.moveWorkflowStep(stepId, up) },
+            onSave = vm::saveEditingWorkflow,
+            onDismiss = vm::closeEditor
+        )
+    }
+
+    // 手动新增 / 编辑弹窗
+    val target = state.editTarget
+    if (target != null) {
+        val cmd = (target as? EditTarget.Command)?.id?.let { vm.commandById(it) }
+        val group = (target as? EditTarget.Group)?.id?.let { vm.groupById(it) }
+        CommandEditDialog(
+            target = target,
+            allCommands = state.commands,
+            existingCommand = cmd,
+            existingGroup = group,
+            onSaveCommand = vm::saveCommand,
+            onSaveGroup = vm::saveGroup,
+            onDismiss = vm::closeEditor
+        )
+    }
+
+}
 @Composable
 private fun CommandList(
     display: DisplayData,
@@ -261,6 +399,7 @@ private fun CommandList(
     onToggleGroup: (String) -> Unit,
     onCommandClick: (String) -> Unit,
     onDocClick: (String) -> Unit,
+    onGroupDocClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit
 ) {
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
@@ -281,13 +420,14 @@ private fun CommandList(
             if (section.collapsed) return@forEach
 
             if (view == ViewMode.LEFT) {
+                // 二级层级：平台 -> 命令（独立卡片）
                 section.commands.forEach { cmd ->
                     item(key = "cmd_${cmd.id}") {
                         CommandRow(
                             cmd = cmd,
                             selected = cmd.id == selectedId,
                             docMode = cmd.id == docCmdId,
-                            indentDp = 0,
+                            nested = false,
                             onCommandClick = onCommandClick,
                             onDocClick = onDocClick,
                             onDeleteClick = onDeleteClick
@@ -295,43 +435,28 @@ private fun CommandList(
                     }
                 }
             } else {
-                // 组
+                // 三级层级：平台 -> 命令组卡片 -> 组内命令（嵌套在卡片内）
                 section.groups.forEach { gs ->
                     item(key = "group_${gs.group.id}") {
-                        GroupHeader(
+                        GroupCard(
                             group = gs.group,
                             collapsed = gs.collapsed,
                             commandCount = gs.commands.size,
-                            onToggle = { onToggleGroup(gs.group.id) }
-                        )
-                    }
-                    if (!gs.collapsed) {
-                        gs.commands.forEach { cmd ->
-                            item(key = "gcmd_${gs.group.id}_${cmd.id}") {
-                                CommandRow(
-                                    cmd = cmd,
-                                    selected = cmd.id == selectedId,
-                                    docMode = cmd.id == docCmdId,
-                                    indentDp = 10,
-                                    onCommandClick = onCommandClick,
-                                    onDocClick = onDocClick,
-                                    onDeleteClick = onDeleteClick
-                                )
+                            onToggle = { onToggleGroup(gs.group.id) },
+                            onDocClick = { onGroupDocClick(gs.group.id) },
+                            commands = {
+                                gs.commands.forEach { cmd ->
+                                    CommandRow(
+                                        cmd = cmd,
+                                        selected = cmd.id == selectedId,
+                                        docMode = cmd.id == docCmdId,
+                                        nested = true,
+                                        onCommandClick = onCommandClick,
+                                        onDocClick = onDocClick,
+                                        onDeleteClick = onDeleteClick
+                                    )
+                                }
                             }
-                        }
-                    }
-                }
-                // 未分组命令
-                section.commands.forEach { cmd ->
-                    item(key = "loose_${cmd.id}") {
-                        CommandRow(
-                            cmd = cmd,
-                            selected = cmd.id == selectedId,
-                            docMode = cmd.id == docCmdId,
-                            indentDp = 0,
-                            onCommandClick = onCommandClick,
-                            onDocClick = onDocClick,
-                            onDeleteClick = onDeleteClick
                         )
                     }
                 }
@@ -353,7 +478,7 @@ private fun CommandRow(
     cmd: com.example.cmdprompter.data.model.Command,
     selected: Boolean,
     docMode: Boolean,
-    indentDp: Int,
+    nested: Boolean,
     onCommandClick: (String) -> Unit,
     onDocClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit
@@ -361,7 +486,7 @@ private fun CommandRow(
     CommandItem(
         cmd = cmd,
         selected = selected || docMode,
-        indentDp = indentDp,
+        nested = nested,
         onSelect = { onCommandClick(cmd.id) },
         onDocClick = { onDocClick(cmd.id) },
         onDeleteClick = { onDeleteClick(cmd.id) }

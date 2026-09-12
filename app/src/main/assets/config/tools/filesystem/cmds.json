@@ -1,5 +1,4 @@
 {
-  "platform": "文件系统",
   "commands": [
     {
       "id": "fs-find",
@@ -29,8 +28,7 @@
           "default": "*.log",
           "hint": "支持通配符"
         }
-      ],
-      "docRef": "filesystem"
+      ]
     },
     {
       "id": "fs-chmod",
@@ -52,8 +50,7 @@
           "type": "text",
           "default": "./script.sh"
         }
-      ],
-      "docRef": "filesystem"
+      ]
     },
     {
       "id": "fs-tar",
@@ -74,8 +71,7 @@
           "type": "text",
           "default": "./dist"
         }
-      ],
-      "docRef": "filesystem"
+      ]
     }
   ],
   "groups": []

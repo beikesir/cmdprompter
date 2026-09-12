@@ -1,5 +1,4 @@
 {
-  "platform": "CMD",
   "commands": [
     {
       "id": "cmd-ipconfig",
@@ -7,8 +6,7 @@
       "desc": "显示全部网卡与 DNS 信息",
       "tags": ["CMD", "网络"],
       "template": "ipconfig /all",
-      "params": [],
-      "docRef": "cmd-windows"
+      "params": []
     },
     {
       "id": "cmd-ping",
@@ -24,8 +22,7 @@
           "default": "www.baidu.com",
           "hint": "IP 或域名"
         }
-      ],
-      "docRef": "cmd-windows"
+      ]
     },
     {
       "id": "cmd-tasklist",
@@ -40,8 +37,7 @@
           "type": "text",
           "default": "node"
         }
-      ],
-      "docRef": "cmd-windows"
+      ]
     }
   ],
   "groups": []

@@ -1,6 +1,20 @@
 {
-  "platform": "Git",
   "commands": [
+    {
+      "id": "git-pull",
+      "name": "拉取最新代码",
+      "desc": "从远程拉取并合并",
+      "tags": ["Git", "日常"],
+      "template": "git pull origin {{branch}}",
+      "params": [
+        {
+          "key": "branch",
+          "label": "分支",
+          "type": "text",
+          "default": "main"
+        }
+      ]
+    },
     {
       "id": "git-commit-push",
       "name": "提交并推送",
@@ -22,24 +36,7 @@
           "options": ["main", "develop", "feature"],
           "default": "main"
         }
-      ],
-      "docRef": "git"
-    },
-    {
-      "id": "git-pull",
-      "name": "拉取最新代码",
-      "desc": "从远程拉取并合并",
-      "tags": ["Git", "日常"],
-      "template": "git pull origin {{branch}}",
-      "params": [
-        {
-          "key": "branch",
-          "label": "分支",
-          "type": "text",
-          "default": "main"
-        }
-      ],
-      "docRef": "git"
+      ]
     },
     {
       "id": "git-switch-branch",
@@ -55,17 +52,8 @@
           "default": "feature/new",
           "hint": "加 -b 表示新建"
         }
-      ],
-      "docRef": "git"
+      ]
     }
   ],
-  "groups": [
-    {
-      "id": "daily-git",
-      "name": "日常开发提交流程",
-      "tags": ["开发", "日常"],
-      "cmdIds": ["git-pull", "git-commit-push"],
-      "order": ["git-pull", "git-commit-push"]
-    }
-  ]
+  "groups": []
 }

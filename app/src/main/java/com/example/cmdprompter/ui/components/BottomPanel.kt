@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +23,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +58,6 @@ import kotlinx.coroutines.delay
 @Composable
 fun BottomPanel(
     cmd: Command,
-    docMode: Boolean,
     preview: String,
     paramValue: (String) -> String,
     onParamChange: (String, String) -> Unit,
@@ -68,7 +66,6 @@ fun BottomPanel(
     onCopy: () -> Unit,
     onExecute: () -> Unit,
     onMore: () -> Unit,
-    onBackToEdit: () -> Unit,
     focusRequestId: Int,
     focusIndex: Int,
     modifier: Modifier = Modifier
@@ -86,23 +83,19 @@ fun BottomPanel(
                 .background(DividerColor)
         )
 
-        if (docMode) {
-            DocView(cmd = cmd, onBackToEdit = onBackToEdit)
-        } else {
-            NormalView(
-                cmd = cmd,
-                preview = preview,
-                paramValue = paramValue,
-                onParamChange = onParamChange,
-                onParamFocused = onParamFocused,
-                onFocusNext = onFocusNext,
-                onCopy = onCopy,
-                onExecute = onExecute,
-                onMore = onMore,
-                focusRequestId = focusRequestId,
-                focusIndex = focusIndex
-            )
-        }
+        NormalView(
+            cmd = cmd,
+            preview = preview,
+            paramValue = paramValue,
+            onParamChange = onParamChange,
+            onParamFocused = onParamFocused,
+            onFocusNext = onFocusNext,
+            onCopy = onCopy,
+            onExecute = onExecute,
+            onMore = onMore,
+            focusRequestId = focusRequestId,
+            focusIndex = focusIndex
+        )
     }
 }
 
@@ -380,48 +373,5 @@ private fun ToolButton(
     ) {
         Text(text = icon, fontSize = 16.sp)
         Text(text = label, fontSize = 9.sp, color = if (label == "已复制") Blue007AFF else TextGray)
-    }
-}
-
-// ------------------------------------------------------------------ 文档态
-
-@Composable
-private fun DocView(
-    cmd: Command,
-    onBackToEdit: () -> Unit
-) {
-    Text(
-        text = "${cmd.name} - 文档",
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF222222),
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(PanelTitleBg)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 320.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = cmd.doc.ifBlank { "（该命令暂无详细文档）" },
-            fontSize = 12.sp,
-            lineHeight = 20.sp,
-            color = Color(0xFF333333)
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "点击命令可返回参数编辑",
-            fontSize = 10.sp,
-            color = TextGray,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onBackToEdit() }
-                .padding(vertical = 6.dp)
-        )
     }
 }

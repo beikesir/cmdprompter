@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "id": "git-stash-pop",
+      "name": "暂存并恢复改动",
+      "desc": "临时收纳工作区改动，稍后恢复",
+      "tags": ["Git", "冲突处理"],
+      "template": "git stash && git pull origin {{branch}} && git stash pop",
+      "params": [
+        {
+          "key": "branch",
+          "label": "分支",
+          "type": "text",
+          "default": "main"
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "daily-git",
+      "name": "日常开发提交流程",
+      "tags": ["开发", "日常"],
+      "cmdIds": ["git-pull", "git-commit-push"],
+      "order": ["git-pull", "git-commit-push"]
+    },
+    {
+      "id": "git-conflict-flow",
+      "name": "拉取冲突处理流程",
+      "tags": ["冲突", "排查"],
+      "cmdIds": ["git-stash-pop", "git-pull", "git-commit-push"],
+      "order": ["git-stash-pop", "git-pull", "git-commit-push"]
+    }
+  ]
+}

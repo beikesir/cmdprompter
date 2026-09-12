@@ -1,5 +1,4 @@
 {
-  "platform": "Node.js",
   "commands": [
     {
       "id": "node-run",
@@ -14,8 +13,7 @@
           "type": "text",
           "default": "index.js"
         }
-      ],
-      "docRef": "nodejs"
+      ]
     },
     {
       "id": "node-eval",
@@ -30,8 +28,7 @@
           "type": "text",
           "default": "console.log(process.version)"
         }
-      ],
-      "docRef": "nodejs"
+      ]
     },
     {
       "id": "npx-run",
@@ -53,8 +50,7 @@
           "default": "my-app",
           "hint": "传给命令的参数"
         }
-      ],
-      "docRef": "nodejs"
+      ]
     }
   ],
   "groups": []

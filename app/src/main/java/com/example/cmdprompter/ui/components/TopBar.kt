@@ -22,14 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cmdprompter.ui.theme.Blue007AFF
 import com.example.cmdprompter.ui.theme.SegmentBg
+import com.example.cmdprompter.viewmodel.ViewMode
 
 /**
- * 顶栏：⚡ logo + [📂组|📋命令] 分段控件 + 🔍 + ⚙️（高 36dp）
+ * 顶栏：⚡ logo + [📂组|📋命令|🔀工作流] 分段控件 + 🔍 + ⚙️（高 40dp）
  */
 @Composable
 fun TopBar(
-    isRightView: Boolean,
-    onViewChange: (Boolean) -> Unit,
+    currentView: ViewMode,
+    onViewChange: (ViewMode) -> Unit,
     onSearchClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onLogoClick: () -> Unit,
@@ -64,15 +65,21 @@ fun TopBar(
         ) {
             SegmentItem(
                 text = "\uD83D\uDCC2组",
-                selected = isRightView,
+                selected = currentView == ViewMode.RIGHT,
                 modifier = Modifier.weight(1f),
-                onClick = { onViewChange(true) }
+                onClick = { onViewChange(ViewMode.RIGHT) }
             )
             SegmentItem(
                 text = "\uD83D\uDCCB命令",
-                selected = !isRightView,
+                selected = currentView == ViewMode.LEFT,
                 modifier = Modifier.weight(1f),
-                onClick = { onViewChange(false) }
+                onClick = { onViewChange(ViewMode.LEFT) }
+            )
+            SegmentItem(
+                text = "\uD83D\uDD00工作流",
+                selected = currentView == ViewMode.WORKFLOW,
+                modifier = Modifier.weight(1f),
+                onClick = { onViewChange(ViewMode.WORKFLOW) }
             )
         }
 

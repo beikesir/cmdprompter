@@ -1,5 +1,4 @@
 {
-  "platform": "SSH",
   "commands": [
     {
       "id": "ssh-connect",
@@ -27,8 +26,7 @@
           "default": "192.168.1.100",
           "hint": "IP 或域名"
         }
-      ],
-      "docRef": "ssh"
+      ]
     },
     {
       "id": "ssh-copy-id",
@@ -55,8 +53,7 @@
           "type": "text",
           "default": "192.168.1.100"
         }
-      ],
-      "docRef": "ssh"
+      ]
     }
   ],
   "groups": []

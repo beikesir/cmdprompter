@@ -1,22 +1,79 @@
 {
   "version": "1.0",
-  "description": "命令提示器配置清单",
+  "description": "命令提示器配置清单：每个工具可配置 1..n 个命令配置文件与 1..n 个文档",
   "tools": [
-    "tools/git.json",
-    "tools/docker.json",
-    "tools/ssh.json",
-    "tools/filesystem.json",
-    "tools/cmd-windows.json",
-    "tools/npm.json",
-    "tools/nodejs.json"
-  ],
-  "docs": {
-    "git": "docs/git.md",
-    "docker": "docs/docker.md",
-    "ssh": "docs/ssh.md",
-    "filesystem": "docs/filesystem.md",
-    "cmd-windows": "docs/cmd-windows.md",
-    "npm": "docs/npm.md",
-    "nodejs": "docs/nodejs.md"
-  }
+    {
+      "id": "git",
+      "platform": "Git",
+      "commands": [
+        "tools/git/cmds-core.json",
+        "tools/git/cmds-flow.json"
+      ],
+      "docs": [
+        "tools/git/doc-core.md",
+        "tools/git/doc-flow.md"
+      ]
+    },
+    {
+      "id": "docker",
+      "platform": "Docker",
+      "commands": [
+        "tools/docker/cmds.json"
+      ],
+      "docs": [
+        "tools/docker/doc-basic.md",
+        "tools/docker/doc-advanced.md"
+      ]
+    },
+    {
+      "id": "ssh",
+      "platform": "SSH",
+      "commands": [
+        "tools/ssh/cmds.json"
+      ],
+      "docs": [
+        "tools/ssh/doc.md"
+      ]
+    },
+    {
+      "id": "filesystem",
+      "platform": "文件系统",
+      "commands": [
+        "tools/filesystem/cmds.json"
+      ],
+      "docs": [
+        "tools/filesystem/doc.md"
+      ]
+    },
+    {
+      "id": "cmd-windows",
+      "platform": "CMD",
+      "commands": [
+        "tools/cmd-windows/cmds.json"
+      ],
+      "docs": [
+        "tools/cmd-windows/doc.md"
+      ]
+    },
+    {
+      "id": "npm",
+      "platform": "npm",
+      "commands": [
+        "tools/npm/cmds.json"
+      ],
+      "docs": [
+        "tools/npm/doc.md"
+      ]
+    },
+    {
+      "id": "nodejs",
+      "platform": "Node.js",
+      "commands": [
+        "tools/nodejs/cmds.json"
+      ],
+      "docs": [
+        "tools/nodejs/doc.md"
+      ]
+    }
+  ]
 }

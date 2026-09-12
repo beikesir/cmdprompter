@@ -1,5 +1,4 @@
 {
-  "platform": "Docker",
   "commands": [
     {
       "id": "docker-run",
@@ -34,8 +33,7 @@
           "default": "nginx:latest",
           "hint": "镜像名:标签"
         }
-      ],
-      "docRef": "docker"
+      ]
     },
     {
       "id": "docker-logs",
@@ -56,8 +54,29 @@
           "type": "text",
           "default": "my-nginx"
         }
-      ],
-      "docRef": "docker"
+      ]
+    },
+    {
+      "id": "docker-exec",
+      "name": "进入容器终端",
+      "desc": "在运行中的容器内执行命令",
+      "tags": ["Docker", "排查"],
+      "template": "docker exec -it {{name}} {{shell}}",
+      "params": [
+        {
+          "key": "name",
+          "label": "容器名",
+          "type": "text",
+          "default": "my-nginx"
+        },
+        {
+          "key": "shell",
+          "label": "Shell",
+          "type": "enum",
+          "options": ["/bin/bash", "/bin/sh", "bash"],
+          "default": "/bin/bash"
+        }
+      ]
     }
   ],
   "groups": [

@@ -1,5 +1,4 @@
 {
-  "platform": "npm",
   "commands": [
     {
       "id": "npm-init",
@@ -7,8 +6,7 @@
       "desc": "使用默认配置快速生成 package.json",
       "tags": ["npm", "初始化"],
       "template": "npm init -y",
-      "params": [],
-      "docRef": "npm"
+      "params": []
     },
     {
       "id": "npm-install",
@@ -31,8 +29,7 @@
           "default": "lodash",
           "hint": "可带版本号"
         }
-      ],
-      "docRef": "npm"
+      ]
     },
     {
       "id": "npm-run",
@@ -48,8 +45,7 @@
           "options": ["dev", "build", "test", "start"],
           "default": "dev"
         }
-      ],
-      "docRef": "npm"
+      ]
     }
   ],
   "groups": []

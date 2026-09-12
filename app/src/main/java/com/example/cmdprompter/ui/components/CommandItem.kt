@@ -1,6 +1,7 @@
 package com.example.cmdprompter.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,35 +25,53 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cmdprompter.data.model.Command
+import com.example.cmdprompter.data.model.Origin
 import com.example.cmdprompter.ui.theme.Blue007AFF
-import com.example.cmdprompter.ui.theme.BorderLight
+import com.example.cmdprompter.ui.theme.CommandBg
+import com.example.cmdprompter.ui.theme.CommandBorder
+import com.example.cmdprompter.ui.theme.CommandSelectedBorder
+import com.example.cmdprompter.ui.theme.DividerColor
+import com.example.cmdprompter.ui.theme.MarkEditBg
+import com.example.cmdprompter.ui.theme.MarkEditFg
+import com.example.cmdprompter.ui.theme.MarkUserBg
+import com.example.cmdprompter.ui.theme.MarkUserFg
 import com.example.cmdprompter.ui.theme.SelectedBg
 import com.example.cmdprompter.ui.theme.TagBg
 import com.example.cmdprompter.ui.theme.TextGray
 
 /**
- * 单条命令项：两行紧凑布局
- * 第一行 = 命令名，第二行 = 描述 + 标签（标签右对齐，最多 2 个）。
- * 操作按钮阻止冒泡，不触发选中。
+ * 命令行。
+ *
+ * @param nested 是否位于命令组卡片内部：
+ *               true  → 三级层级，贴在卡片内、无外边距、行尾细分隔线；
+ *               false → 二级层级（命令视图），独立圆角卡片 + 外边距。
  */
 @Composable
 fun CommandItem(
     cmd: Command,
     selected: Boolean,
-    indentDp: Int = 0,
+    nested: Boolean,
     onSelect: () -> Unit,
     onDocClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shape = if (nested) RoundedCornerShape(0.dp) else RoundedCornerShape(8.dp)
+    val bg = if (selected) SelectedBg else CommandBg
+    val border = if (selected) CommandSelectedBorder else CommandBorder
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (selected) SelectedBg else Color.White)
+            .then(if (nested) Modifier else Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+            .background(bg, shape)
+            .border(if (selected) 1.5.dp else 1.dp, border, shape)
             .clickable { onSelect() }
     ) {
         Row(
-            modifier = Modifier.heightIn(min = 42.dp),
+            modifier = Modifier
+                .heightIn(min = 42.dp)
+                .padding(end = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 选中态左侧竖条
@@ -62,23 +81,30 @@ fun CommandItem(
                     .width(3.dp)
                     .background(if (selected) Blue007AFF else Color.Transparent)
             )
+            // 左内边距（层级由「是否被命令组卡片包含」体现，不再用箭头）
+            Spacer(Modifier.width(8.dp))
 
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = (8 + indentDp).dp, end = 2.dp, top = 4.dp, bottom = 4.dp)
+                    .padding(top = 4.dp, bottom = 4.dp, end = 2.dp)
             ) {
-                // 第 1 行：命令名
-                Text(
-                    text = cmd.name,
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF222222),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                // 第 2 行：描述 + 标签
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = cmd.name,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF222222),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (cmd.isCustom) {
+                        Spacer(Modifier.width(4.dp))
+                        OriginMark(origin = cmd.origin)
+                    }
+                }
                 if (cmd.desc.isNotBlank() || cmd.tags.isNotEmpty()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +132,6 @@ fun CommandItem(
                 }
             }
 
-            // 操作区
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -125,14 +150,30 @@ fun CommandItem(
             }
         }
 
-        // 分隔线（只画底部，避免相邻条目出现双线）
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(BorderLight)
-        )
+        if (nested) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(DividerColor)
+            )
+        }
     }
+}
+
+/** 手动新增 / 修改条目的小标记 */
+@Composable
+fun OriginMark(origin: String) {
+    val isUser = origin == Origin.USER
+    Text(
+        text = if (isUser) "自建" else "已改",
+        fontSize = 8.sp,
+        lineHeight = 10.sp,
+        color = if (isUser) MarkUserFg else MarkEditFg,
+        modifier = Modifier
+            .background(if (isUser) MarkUserBg else MarkEditBg, RoundedCornerShape(8.dp))
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    )
 }
 
 @Composable
